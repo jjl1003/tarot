@@ -226,15 +226,17 @@ test("Vercel 实际入口保留路由和来源检查，登录限流使用平台�
   try {
     const store = f.store();
     const handler = createVercelHandler(env, { store, fetchImpl: async () => Response.json({ choices: [{ message: { content: "有效解读" } }] }) });
-    assert.equal((await invoke(handler, "/api/runtime")).json.mode, "hosted");
-    assert.equal((await invoke(handler, "/healthz")).status, 200);
+    assert.equal((await invoke(handler, "/api/runtime?path=runtime")).json.mode, "hosted");
+    assert.equal((await invoke(handler, "/healthz?probe=1")).status, 200);
     const headers = { "x-vercel-forwarded-for": "192.0.2.1", "x-forwarded-for": "forged" };
-    const login = await invoke(handler, "/api/access", { method: "POST", body: { code }, headers });
+    const login = await invoke(handler, "/api/access?path=access", { method: "POST", body: { code }, headers });
     const cookie = login.headers["set-cookie"].split(";")[0];
     const body = { messages: [{ role: "user", content: "问题" }] };
-    assert.equal((await invoke(handler, "/api/reading", { method: "POST", body, cookie, origin: "https://evil.example" })).status, 403);
+    assert.equal((await invoke(handler, "/api/reading?path=reading", { method: "POST", body, cookie, origin: "https://evil.example" })).status, 403);
     assert.equal((await invoke(handler, "/api/runtime", { host: "evil.example" })).status, 403);
-    assert.equal((await invoke(handler, "/api/reading", { method: "POST", body, cookie })).status, 200);
+    assert.equal((await invoke(handler, "/api/reading?path=reading", { method: "POST", body, cookie })).status, 200);
+    assert.equal((await invoke(handler, "/api/access?path=access", { cookie })).json.authenticated, true);
+    assert.equal((await invoke(handler, "/api/unknown?path=runtime")).status, 404);
     for (let i = 0; i < 9; i++) {
       const result = await invoke(handler, "/api/access", { method: "POST", body: { code: "bad" }, headers: { ...headers, "x-forwarded-for": `forged-${i}` } });
       assert.equal(result.status, 401);

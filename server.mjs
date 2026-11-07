@@ -50,6 +50,9 @@ export function createHandler({
 } = {}) {
   hosted?.ready.catch(() => {});
   return async (req, res) => {
+    // Vercel rewrites can append captured path parameters to the URL query.
+    // Route on the pathname so those parameters cannot turn a valid API into 404.
+    const requestPath = req.url.split("?")[0];
     const send = (
       code,
       body,
@@ -66,7 +69,7 @@ export function createHandler({
       });
       res.end(type === "application/json" ? JSON.stringify(body) : body);
     };
-    if (req.url === "/healthz" && req.method === "GET") {
+    if (requestPath === "/healthz" && req.method === "GET") {
       try {
         await hosted?.ready;
         await hosted?.health?.();
@@ -87,9 +90,9 @@ export function createHandler({
         req.headers.origin !== expected)
     )
       return send(403, { error: "请求来源不受支持" });
-    if (req.url === "/api/runtime" && req.method === "GET")
+    if (requestPath === "/api/runtime" && req.method === "GET")
       return send(200, hosted ? hosted.publicStatus() : { mode: "local" });
-    if (req.url === "/api/access" && hosted) {
+    if (requestPath === "/api/access" && hosted) {
       try {
         if (req.method === "GET") return send(200, await hosted.status(req));
         if (req.method === "POST") {
@@ -111,7 +114,7 @@ export function createHandler({
         });
       }
     }
-    if (req.url === "/api/reading" && req.method === "POST") {
+    if (requestPath === "/api/reading" && req.method === "POST") {
       let lease;
       // Complete shared-store cleanup before ending the function response.
       const readingSend = async (...args) => {
