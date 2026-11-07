@@ -1,0 +1,15 @@
+{
+  "name": "tarot-journal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "create-secrets": "node scripts/create-secrets.mjs",
+    "check:deployment": "node --env-file-if-exists=.env scripts/check-deployment.mjs"
+  },
+  "engines": {
+    "node": ">=22.16"
+  }
+}

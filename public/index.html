@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#e8e4da" />
+    <title>月下手札 · 塔罗</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="brand" href="/" aria-label="月下手札首页"
+        ><span class="brand-moon">☽</span
+        ><span>月下手札<small>A TAROT JOURNAL</small></span></a
+      >
+      <button
+        id="settings-open"
+        class="connection-button"
+        aria-haspopup="dialog"
+      >
+        <span class="status-dot" aria-hidden="true"></span
+        ><span id="connection-label">模型连接</span
+        ><span aria-hidden="true">↗</span>
+      </button>
+    </header>
+    <main class="desk">
+      <div class="book-topline">
+        <span class="edition">给自己的一小段留白</span>
+        <nav class="book-tabs" role="tablist" aria-label="手札章节">
+          <button
+            id="tab-setup"
+            role="tab"
+            data-page="setup"
+            aria-controls="page-setup"
+          >
+            01 <span>写下心事</span></button
+          ><button
+            id="tab-draw"
+            role="tab"
+            data-page="draw"
+            aria-controls="page-draw"
+          >
+            02 <span>抽牌仪式</span></button
+          ><button
+            id="tab-reading"
+            role="tab"
+            data-page="reading"
+            aria-controls="page-reading"
+          >
+            03 <span>牌间来信</span></button
+          ><button
+            id="tab-history"
+            role="tab"
+            data-page="history"
+            aria-controls="page-history"
+          >
+            04 <span>往日手札</span>
+          </button>
+        </nav>
+        <button id="new-session" class="text-button" hidden>另起一篇 ＋</button>
+      </div>
+      <div class="book-cover">
+        <div class="book" id="book">
+          <section
+            id="page-setup"
+            class="book-spread"
+            role="tabpanel"
+            aria-labelledby="tab-setup"
+          >
+            <div class="leaf cover-leaf">
+              <div class="leaf-kicker">
+                THE QUIET CHAPTER <span>VOL. 01</span>
+              </div>
+              <div class="cover-copy">
+                <span class="overline">月光落在纸上，答案慢慢浮现</span>
+                <h1>把心事，<br />写进月光里。</h1>
+                <p>不必急着找到答案。<br />翻开这一页，先听听自己的声音。</p>
+              </div>
+              <div class="moon-art" aria-hidden="true">
+                <div class="orbit orbit-one"></div>
+                <div class="orbit orbit-two"></div>
+                <div class="moon-disc"></div>
+                <span class="star star-one">✦</span
+                ><span class="star star-two">✧</span
+                ><span class="star star-three">✧</span
+                ><span class="art-line"></span>
+              </div>
+              <div class="leaf-bottom">
+                <span>一问 · 一副牌 · 一次自我对话</span><span>i</span>
+              </div>
+            </div>
+            <div class="leaf writing-leaf">
+              <div class="leaf-kicker">CHAPTER ONE <span>01 / 提问</span></div>
+              <div id="setup-form" class="writing-content">
+                <h2>此刻，什么萦绕在心？</h2>
+                <label for="question">写下一个你想认真探索的问题</label
+                ><textarea
+                  id="question"
+                  maxlength="2000"
+                  placeholder="例如：面对新的工作机会，我该如何理解自己的顾虑？"
+                ></textarea>
+                <fieldset id="spreads">
+                  <legend>让哪一种牌阵陪你梳理？</legend>
+                  <label
+                    ><input type="radio" name="spread" value="single" /><span
+                      ><strong>一张指引</strong
+                      ><small>给当下，一个新的视角</small></span
+                    ><span class="spread-symbol">Ⅰ</span></label
+                  ><label
+                    ><input
+                      type="radio"
+                      name="spread"
+                      value="insight"
+                      checked
+                    /><span
+                      ><strong>现状 · 阻碍 · 建议</strong
+                      ><small>看清处境，找到下一步</small></span
+                    ><span class="spread-symbol">Ⅲ</span></label
+                  ><label
+                    ><input type="radio" name="spread" value="timeline" /><span
+                      ><strong>过去 · 现在 · 未来</strong
+                      ><small>沿着时间，梳理变化的脉络</small></span
+                    ><span class="spread-symbol">Ⅲ</span></label
+                  >
+                </fieldset>
+                <button id="begin" class="primary">
+                  写好了，翻开下一页 <span>→</span>
+                </button>
+              </div>
+              <div id="setup-existing" class="writing-content" hidden></div>
+              <div class="leaf-bottom">
+                <span>每一个认真提出的问题，都值得被倾听。</span><span>01</span>
+              </div>
+            </div>
+          </section>
+          <section
+            id="page-draw"
+            class="book-spread"
+            role="tabpanel"
+            aria-labelledby="tab-draw"
+            hidden
+          ></section>
+          <section
+            id="page-reading"
+            class="book-spread"
+            role="tabpanel"
+            aria-labelledby="tab-reading"
+            hidden
+          ></section>
+          <section
+            id="page-history"
+            class="book-spread"
+            role="tabpanel"
+            aria-labelledby="tab-history"
+            hidden
+          ></section>
+        </div>
+      </div>
+      <div class="desk-footer">
+        <span>✧ 以符号为镜，让选择回到你手中。</span>
+        <p id="notice" role="status" aria-live="polite"></p>
+        <span>仅供娱乐与自我反思 · <a href="/credits.html">牌面来源</a></span>
+      </div>
+    </main>
+    <dialog id="settings-dialog" aria-labelledby="settings-title">
+      <form id="settings-form">
+        <div class="dialog-heading">
+          <div>
+            <span class="overline">YOUR CONNECTION</span>
+            <h2 id="settings-title">模型连接</h2>
+          </div>
+          <button
+            type="button"
+            id="settings-close"
+            class="icon-button"
+            aria-label="关闭模型连接"
+          >
+            ×
+          </button>
+        </div>
+        <p id="connection-description">
+          把连接设置好，就可以安心翻阅你的手札。
+        </p>
+        <div id="local-settings">
+          <div class="settings-grid">
+            <label
+              >API 地址<input
+                id="base-url"
+                type="url"
+                placeholder="https://api.openai.com/v1"
+                autocomplete="off"
+                required /></label
+            ><label
+              >模型名称<input
+                id="model"
+                placeholder="输入服务商提供的模型名"
+                autocomplete="off"
+                required /></label
+            ><label
+              >API Key<input
+                id="api-key"
+                type="password"
+                placeholder="输入你的 API Key"
+                autocomplete="off"
+                required
+            /></label>
+          </div>
+          <label class="remember"
+            ><input
+              id="remember"
+              type="checkbox"
+            />在此浏览器记住密钥，下次直接使用</label
+          >
+          <p class="fine">
+            地址与模型会自动保存；密钥仅在勾选后保存，取消勾选即清除已保存密钥。生成解读需联网，问题、牌面与对话会发送至你配置的模型服务。
+          </p>
+        </div>
+        <div id="hosted-access" hidden>
+          <div id="invite-entry">
+            <label
+              >你的邀请码<input
+                id="invite-code"
+                type="password"
+                autocomplete="off"
+                maxlength="128"
+                placeholder="输入邀请人发给你的邀请码"
+            /></label>
+          </div>
+          <div id="invite-status" hidden>
+            <span class="overline">YOUR LITTLE CHAPTER</span>
+            <h3>体验已开启</h3>
+            <p id="quota-status"></p>
+            <button id="access-logout" type="button" class="text-button">
+              退出本次体验
+            </button>
+          </div>
+          <p class="fine">
+            每次生成或重试消耗一次额度，抽牌、翻页和查看历史不计次数。每日额度在北京时间零点更新。解读内容会发送至本站配置的模型服务，历史仅存在当前浏览器。
+          </p>
+        </div>
+        <p id="settings-error" role="alert"></p>
+        <button type="submit" id="settings-save" class="primary">
+          保存连接 <span>↗</span>
+        </button>
+      </form>
+    </dialog>
+  </body>
+</html>

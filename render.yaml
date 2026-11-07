@@ -1,0 +1,49 @@
+services:
+  - type: web
+    name: moonlit-tarot-journal
+    runtime: node
+    plan: starter
+    numInstances: 1
+    buildCommand: npm test
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    disk:
+      name: tarot-usage
+      mountPath: /var/data/tarot
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: TAROT_MODE
+        value: hosted
+      - key: TAROT_API_BASE_URL
+        value: https://api.deepseek.com
+      - key: TAROT_MODEL
+        value: deepseek-v4-pro
+      - key: TAROT_API_KEY
+        sync: false
+      - key: TAROT_INVITE_CODES
+        sync: false
+      - key: TAROT_SESSION_SECRET
+        generateValue: true
+      - key: TAROT_USAGE_FILE
+        value: /var/data/tarot/usage.json
+      - key: TAROT_INVITE_DAILY_LIMIT
+        value: "5"
+      - key: TAROT_INVITE_TOTAL_LIMIT
+        value: "20"
+      - key: TAROT_DAILY_LIMIT
+        value: "100"
+      - key: TAROT_TOTAL_LIMIT
+        value: "1000"
+      - key: TAROT_REQUESTS_PER_MINUTE
+        value: "2"
+      - key: TAROT_CONCURRENT_LIMIT
+        value: "3"
+      - key: TAROT_MAX_INPUT_CHARS
+        value: "20000"
+      - key: TAROT_MAX_OUTPUT_TOKENS
+        value: "2048"
