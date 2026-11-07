@@ -1,5 +1,6 @@
 import {
   SPREADS,
+  shuffle,
   createSession,
   transition,
   contextMessages,
@@ -15,6 +16,11 @@ import {
 import { CARD_MAP } from "./cards.js";
 import { readingPayload, quotaText } from "./access.js";
 import { PAGES, defaultPage, availablePages, readingPages } from "./journal.js";
+import { SPIRITS, MAJOR_IDS, createSpirit, chooseSpirit, renameSpirit, saveSpirit, loadSpirit, spiritContext } from "./spirit.js";
+import { MEANINGS, findMeaningCards, cardGroup, MEANING_GROUPS } from "./meanings.js";
+let meaningChoice = "m0";
+let meaningDrawn = null;
+let spirit = loadSpirit(localStorage);
 const $ = (id) => document.getElementById(id);
 const data = loadSessions(localStorage);
 let sessions = data.sessions,
@@ -263,10 +269,12 @@ for (const tab of document.querySelectorAll("[data-page]")) {
 }
 $("begin").onclick = () => {
   try {
+    if (!spirit?.cardId) { openSpirit(); return; }
     const s = createSession(
       $("question").value,
       document.querySelector("[name=spread]:checked").value,
       runtime.mode === "hosted" ? runtime.model : config.model,
+      spirit,
     );
     sessions.unshift(s);
     current = s.id;
@@ -287,18 +295,107 @@ $("new-session").onclick = () => {
   notify();
   turnTo("setup");
 };
+function storeSpirit(next) {
+  // Persist before revealing: a failed save must not present an unsaved result.
+  saveSpirit(localStorage, next);
+  spirit = next;
+  renderSpirit();
+  render();
+}
+function openSpirit() {
+  renderSpirit();
+  $("spirit-error").textContent = "";
+  if (!$("spirit-dialog").open) $("spirit-dialog").showModal();
+}
+$("spirit-open").onclick = openSpirit;
+$("spirit-close").onclick = () => $("spirit-dialog").close();
+function spiritAction(fn) {
+  try { fn(); $("spirit-error").textContent = ""; }
+  catch (e) { $("spirit-error").textContent = `尚未保存：${e.message}。请检查浏览器存储后重试。`; }
+}
+function renderSpirit() {
+  $("spirit-title").textContent = spirit?.cardId ? "这副牌，与你的相处方式" : "与你的牌，初次相遇";
+  const target = $("spirit-content");
+  if (!spirit) {
+    target.innerHTML = '<p>从 22 张大阿卡纳中，亲手选出这副牌的牌灵。它将有自己的观察角度、说话方式与追问习惯，陪你写下往后的手札。</p><p class="fine">牌灵是一种仪式与性格设定，不代表预测更准确。它不参与正式牌阵，也不改变抽牌结果。</p><button id="spirit-shuffle" class="primary">洗开这 22 张牌，准备相遇 <span>✧</span></button>';
+    bind("spirit-shuffle", () => spiritAction(() => storeSpirit(createSpirit(shuffle(MAJOR_IDS)))));
+  } else if (spirit.cardId === null) {
+    target.innerHTML = '<p>牌序已经保存。凭直觉选一张，点击后翻开；刷新页面也会保留这次顺序。</p><div class="spirit-grid">' + spirit.order.map((_, i) => `<button class="spirit-back" data-spirit-pick="${i}" aria-label="选择第 ${i + 1} 张牌灵牌">✧<small>${i + 1}</small></button>`).join("") + '</div>';
+    target.querySelectorAll("[data-spirit-pick]").forEach((b) => b.onclick = () => spiritAction(() => storeSpirit(chooseSpirit(spirit, Number(b.dataset.spiritPick)))));
+  } else {
+    const card = CARD_MAP[spirit.cardId], traits = SPIRITS[spirit.cardId];
+    target.innerHTML = `<div class="spirit-result"><img src="${card.image}" alt="${esc(card.name)}牌灵"><div><span class="overline">你的牌灵 · ${esc(new Date(spirit.createdAt).toLocaleDateString("zh-CN"))}</span><h3>${esc(card.name)} · ${esc(traits.voice)}</h3><p>它会留意：${esc(traits.focus)}。</p><p>它可能这样追问你：“${esc(traits.question)}”</p></div></div><form id="spirit-name-form"><label for="spirit-name">给这副牌起个名字</label><input id="spirit-name" maxlength="40" required value="${esc(spirit.name)}"><button class="primary" type="submit">保存名字，带它开始 <span>→</span></button></form><p class="fine">档案仅保存在当前浏览器，清除站点数据会丢失。每篇新手札沿用这位牌灵，旧手札保留原档案。正式抽牌仍使用全部 78 张牌，包含这张牌灵牌。牌灵影响视角与表达，不改变牌义，也不保证结果。</p>`;
+    $("spirit-name-form").onsubmit = (e) => {
+      e.preventDefault();
+      spiritAction(() => {
+        storeSpirit(renameSpirit(spirit, $("spirit-name").value));
+        $("spirit-dialog").close();
+        notify("牌灵档案已保存。写下心事，和它开始第一段对话吧。");
+      });
+    };
+  }
+}
+function spiritNote(s) {
+  const c = spiritContext(s.spirit);
+  return c ? `<p class="spirit-note">✧ ${esc(s.spirit.name)} · ${esc(c.牌灵)}牌灵<br><small>${esc(c.voice)} · 关注${esc(c.focus)}</small></p>` : '<p class="spirit-note"><small>这篇旧手札未绑定牌灵，沿用原来的解读方式。</small></p>';
+}
+function openMeanings(id = null, reversed = null) {
+  if (id && Object.hasOwn(MEANINGS, id)) {
+    meaningChoice = id;
+    meaningDrawn = { id, reversed };
+    $("meaning-search").value = "";
+    $("meaning-group").value = "all";
+  } else meaningDrawn = null;
+  renderMeaningList();
+  if (!$("meanings-dialog").open) $("meanings-dialog").showModal();
+  $("meaning-list").querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: "nearest" });
+  if (id) $("meaning-detail").focus();
+  else $("meaning-search").focus();
+}
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-meaning]");
+  if (button) openMeanings(button.dataset.meaning, button.dataset.reversed === "true");
+});
+$("meanings-open").onclick = () => openMeanings();
+$("meanings-close").onclick = () => $("meanings-dialog").close();
+$("meaning-search").oninput = renderMeaningList;
+$("meaning-group").onchange = renderMeaningList;
+function renderMeaningList() {
+  const matches = findMeaningCards($("meaning-search").value, $("meaning-group").value);
+  if (!matches.some(c => c.id === meaningChoice)) meaningChoice = matches[0]?.id || null;
+  $("meaning-count").textContent = `找到 ${matches.length} / 78 张牌`;
+  $("meaning-list").innerHTML = matches.length ? matches.map(c => `<button class="meaning-item" data-meaning-choice="${c.id}" aria-pressed="${c.id === meaningChoice}"><img src="${c.image}" alt="" loading="lazy"><span>${esc(c.name)}<small>${esc(MEANINGS[c.id].upright.keywords.join(" · "))}</small></span></button>`).join("") : '<p class="fine">没有找到匹配的牌，试试其他牌名或清除筛选。</p>';
+  $("meaning-list").querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: "nearest" });
+  $("meaning-list").querySelectorAll("[data-meaning-choice]").forEach(b => b.onclick = () => {
+    meaningChoice = b.dataset.meaningChoice;
+    $("meaning-list").querySelectorAll("[data-meaning-choice]").forEach(item => item.setAttribute("aria-pressed", String(item.dataset.meaningChoice === meaningChoice)));
+    renderMeaningDetail();
+  });
+  renderMeaningDetail();
+}
+function renderMeaningDetail() {
+  const card = CARD_MAP[meaningChoice], m = MEANINGS[meaningChoice];
+  if (!card || !m) {
+    $("meaning-detail").innerHTML = '<div class="meaning-empty"><h3>留一点空间，换个词找找</h3><p>可按中文名、英文名或正逆位关键词搜索，也可切换牌组。</p></div>';
+    return;
+  }
+  const selected = meaningDrawn?.id === card.id && typeof meaningDrawn.reversed === "boolean";
+  const section = (direction, label) => `<section class="meaning-direction ${selected && meaningDrawn.reversed === (direction === "reversed") ? "is-current" : ""}"><h4>${label}${selected && meaningDrawn.reversed === (direction === "reversed") ? '<span>本次抽中</span>' : ""}</h4><p class="meaning-keywords">${esc(m[direction].keywords.join(" · "))}</p><p>${esc(m[direction].text)}</p></section>`;
+  $("meaning-detail").innerHTML = `<header class="meaning-intro"><img src="${card.image}" alt="${esc(card.name)}牌面"><div><span class="overline">${esc(MEANING_GROUPS[cardGroup(card.id)])}</span><h3>${esc(card.name)}<small>${esc(m.source.englishName)}</small></h3><p>${esc(m.theme)}</p></div></header>${section("upright", "正位")}${section("reversed", "逆位")}`;
+  $("meaning-detail").scrollTop = 0;
+}
 const kicker = (title, number) =>
   `<div class="leaf-kicker">${title}<span>${number}</span></div>`;
 const bottom = (text, number) =>
   `<div class="leaf-bottom"><span>${text}</span><span>${number}</span></div>`;
 function sessionNote(s, chapter, heading, copy) {
-  return `<div class="leaf context-leaf">${kicker(chapter, SPREADS[s.spread].name)}<div class="context-content"><span class="overline">这一次，你想探索</span><h2 class="session-question">${esc(s.question)}</h2><div class="context-divider">✧</div><h3>${heading}</h3><p>${copy}</p></div>${bottom("每一张牌，都是一次看见自己的机会。", "☽")}</div>`;
+  return `<div class="leaf context-leaf">${kicker(chapter, SPREADS[s.spread].name)}<div class="context-content"><span class="overline">这一次，你想探索</span><h2 class="session-question">${esc(s.question)}</h2>${spiritNote(s)}<div class="context-divider">✧</div><h3>${heading}</h3><p>${copy}</p></div>${bottom("每一张牌，都是一次看见自己的机会。", "☽")}</div>`;
 }
 function fan(s) {
   return `<div class="fan-scroll" aria-label="横向滑动浏览剩余牌"><div class="fan" style="width:${s.deck.length * 38 + 70}px">${s.deck.map((id, i) => `<button class="back" style="left:${i * 38}px;transform:rotate(${(i / (s.deck.length - 1) - 0.5) * 16}deg);top:${Math.pow((i / (s.deck.length - 1) - 0.5) * 2, 2) * 18}px" data-pick="${id}" aria-label="选择第 ${i + 1} 张牌">✧</button>`).join("")}</div></div>`;
 }
 function cards(s, interactive = false) {
-  return `<div class="spread ${s.cards.length === 4 ? "four-cards" : ""}">${s.cards.map((c, i) => `<div class="slot"><div class="position">${esc(c.position)}</div><button class="card ${c.revealed ? "revealed" : "back"}" data-flip="${i}" ${!interactive || c.revealed || busy || !["reveal", "supplement-reveal"].includes(s.phase) ? "disabled" : ""} aria-label="${c.revealed ? esc(CARD_MAP[c.id].name) : "翻开" + esc(c.position)}">${c.revealed ? `<img src="${CARD_MAP[c.id].image}" class="${c.reversed ? "reversed" : ""}" alt="${esc(CARD_MAP[c.id].name)}">` : "✧"}</button><div class="card-name">${c.revealed ? esc(CARD_MAP[c.id].name) : "点击翻开"}</div><div class="orientation">${c.revealed ? (c.reversed ? "逆位" : "正位") : "尚未翻开"}</div></div>`).join("")}</div>`;
+  return `<div class="spread ${s.cards.length === 4 ? "four-cards" : ""}">${s.cards.map((c, i) => `<div class="slot"><div class="position">${esc(c.position)}</div><button class="card ${c.revealed ? "revealed" : "back"}" data-flip="${i}" ${!interactive || c.revealed || busy || !["reveal", "supplement-reveal"].includes(s.phase) ? "disabled" : ""} aria-label="${c.revealed ? esc(CARD_MAP[c.id].name) : "翻开" + esc(c.position)}">${c.revealed ? `<img src="${CARD_MAP[c.id].image}" class="${c.reversed ? "reversed" : ""}" alt="${esc(CARD_MAP[c.id].name)}">` : "✧"}</button><div class="card-name">${c.revealed ? esc(CARD_MAP[c.id].name) : "点击翻开"}</div><div class="orientation">${c.revealed ? (c.reversed ? "逆位" : "正位") : "尚未翻开"}</div>${c.revealed ? `<button class="text-button card-meaning" data-meaning="${c.id}" data-reversed="${c.reversed}" aria-label="查阅${esc(CARD_MAP[c.id].name)}${c.reversed ? "逆位" : "正位"}牌义">查牌义 ↗</button>` : ""}</div>`).join("")}</div>`;
 }
 function bind(id, fn) {
   if ($(id)) $(id).onclick = fn;
@@ -423,7 +520,7 @@ function renderReading(s) {
       ? `<div class="composer"><label for="followup">这次牌面，你还想问什么？</label><textarea id="followup" maxlength="2000" placeholder="把想继续探索的话写在这里…">${esc(drafts.get(s.id) || "")}</textarea><div class="composer-actions"><button id="supplement" class="text-button" ${s.supplementUsed ? "disabled" : ""}>${s.supplementUsed ? "补牌已使用" : "＋ 我要补抽一张"}</button><button id="ask" class="primary">寄出追问 <span>↗</span></button></div></div>`
       : "";
   $("page-reading").innerHTML =
-    `<div class="leaf reading-context">${kicker("CHAPTER THREE", SPREADS[s.spread].name)}<div class="reading-question"><span class="overline">关于这一次的心事</span><h2 class="session-question">${esc(s.question)}</h2></div>${cards(s)}<p class="cards-footnote">${s.cards.length} 张已落定的牌 · ${s.supplementUsed ? "补充指引已加入" : "故事可以继续"}</p>${bottom("牌面给出视角，决定始终属于你。", "03")}</div><div class="leaf letter-leaf">${kicker("A LETTER BETWEEN THE CARDS", "牌间来信")}<div class="letter-content">${content}${pending}<div class="pagination"><button id="letter-prev" class="text-button" ${readingIndex <= 0 ? "disabled" : ""} aria-label="上一页来信">← 上一页</button><span>${pages.length ? readingIndex + 1 : 0} / ${pages.length}</span><button id="letter-next" class="text-button" ${readingIndex >= pages.length - 1 ? "disabled" : ""} aria-label="下一页来信">下一页 →</button></div>${composer}</div>${bottom("慢慢读，也慢慢听自己。", "04")}</div>`;
+    `<div class="leaf reading-context">${kicker("CHAPTER THREE", SPREADS[s.spread].name)}<div class="reading-question"><span class="overline">关于这一次的心事</span><h2 class="session-question">${esc(s.question)}</h2></div>${cards(s)}${spiritNote(s)}<p class="cards-footnote">${s.cards.length} 张已落定的牌 · ${s.supplementUsed ? "补充指引已加入" : "故事可以继续"}</p>${bottom("牌面给出视角，决定始终属于你。", "03")}</div><div class="leaf letter-leaf">${kicker("A LETTER BETWEEN THE CARDS", "牌间来信")}<div class="letter-content">${content}${pending}<div class="pagination"><button id="letter-prev" class="text-button" ${readingIndex <= 0 ? "disabled" : ""} aria-label="上一页来信">← 上一页</button><span>${pages.length ? readingIndex + 1 : 0} / ${pages.length}</span><button id="letter-next" class="text-button" ${readingIndex >= pages.length - 1 ? "disabled" : ""} aria-label="下一页来信">下一页 →</button></div>${composer}</div>${bottom("慢慢读，也慢慢听自己。", "04")}</div>`;
   bind("letter-prev", () => {
     readingIndex--;
     renderReading(s);
@@ -510,6 +607,8 @@ function render() {
   $("new-session").hidden = !s;
   $("new-session").disabled = busy;
   $("begin").disabled = busy;
+  $("spirit-open").disabled = busy;
+  $("spirit-open").textContent = spirit?.cardId ? `✧ ${spirit.name} · ${CARD_MAP[spirit.cardId].name}牌灵` : "✧ 建立我的牌灵";
   $("setup-form").hidden = !!s;
   $("setup-existing").hidden = !s;
   if (s) {

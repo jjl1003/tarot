@@ -25,6 +25,10 @@
       </button>
     </header>
     <main class="desk">
+      <nav class="desk-tools" aria-label="私人牌与参考资料">
+        <button id="spirit-open" class="text-button spirit-entry" aria-haspopup="dialog">✧ 建立我的牌灵</button>
+        <button id="meanings-open" class="text-button" aria-haspopup="dialog">牌义手册 ↗</button>
+      </nav>
       <div class="book-topline">
         <span class="edition">给自己的一小段留白</span>
         <nav class="book-tabs" role="tablist" aria-label="手札章节">
@@ -163,6 +167,20 @@
         <span>仅供娱乐与自我反思 · <a href="/credits.html">牌面来源</a></span>
       </div>
     </main>
+    <dialog id="meanings-dialog" aria-labelledby="meanings-title">
+      <div class="dialog-heading"><div><span class="overline">A COMPANION TO THE CARDS</span><h2 id="meanings-title">78 张牌，慢慢读懂</h2></div><button id="meanings-close" class="icon-button" aria-label="关闭牌义手册">×</button></div>
+      <div class="meaning-filters">
+        <label for="meaning-search">查找牌名或关键词<input id="meaning-search" type="search" placeholder="例如：愚人、圣杯二、边界、The Fool" maxlength="100" autocomplete="off"></label>
+        <label for="meaning-group">牌组<select id="meaning-group"><option value="all">全部牌</option><option value="major">大阿卡纳</option><option value="wands">权杖</option><option value="cups">圣杯</option><option value="swords">宝剑</option><option value="pentacles">星币</option></select></label>
+      </div>
+      <p id="meaning-count" class="fine" role="status" aria-live="polite"></p>
+      <div class="meaning-layout"><nav id="meaning-list" aria-label="牌义目录"></nav><article id="meaning-detail" tabindex="0" aria-label="牌义详情"></article></div>
+    </dialog>
+    <dialog id="spirit-dialog" aria-labelledby="spirit-title">
+      <div class="dialog-heading"><div><span class="overline">YOUR OWN DECK</span><h2 id="spirit-title">与你的牌，初次相遇</h2></div><button id="spirit-close" class="icon-button" aria-label="关闭牌灵档案">×</button></div>
+      <div id="spirit-content"></div>
+      <p id="spirit-error" role="alert"></p>
+    </dialog>
     <dialog id="settings-dialog" aria-labelledby="settings-title">
       <form id="settings-form">
         <div class="dialog-heading">

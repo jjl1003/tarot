@@ -1614,3 +1614,75 @@ dialog::backdrop {
     transition: none !important;
   }
 }
+
+/* The personal deck stays accessible without adding a chapter. */
+.desk { position: relative; }
+.spirit-entry { position: absolute; right: 0; top: -28px; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#spirit-dialog { width: min(620px, calc(100vw - 28px)); max-height: 88dvh; overflow-y: auto; }
+.spirit-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 18px 0; }
+.spirit-back { min-height: 83px; background: #68715b; color: #fffdf5; border: 3px double #c8ccb7; }
+.spirit-back small { display: block; font-size: 10px; }
+.spirit-result { display: flex; gap: 20px; align-items: center; margin: 18px 0; }
+.spirit-result img { width: 100px; height: auto; border-radius: 5px; }
+.spirit-result h3 { margin: 8px 0; }
+#spirit-name { display: block; width: 100%; margin: 8px 0 16px; padding: 10px; border: 1px solid var(--line); background: var(--paper); }
+.spirit-note { font-size: 12px; color: var(--accent); margin: 10px 0; }
+.spirit-note small { font-size: 11px; }
+#spirit-error { color: #9d453c; }
+@media (max-width: 600px) {
+  .spirit-entry { top: -22px; font-size: 11px; }
+  .spirit-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .spirit-back { min-height: 68px; }
+  .spirit-result { gap: 12px; align-items: flex-start; }
+  .spirit-result img { width: 75px; }
+  .reading-context .spirit-note { margin: 2px 0; font-size: 10px; }
+  .reading-context .spirit-note small { display: none; }
+}
+
+.desk-tools { position: absolute; top: -28px; right: 44px; display: flex; align-items: center; gap: 18px; max-width: calc(100% - 88px); }
+.desk-tools .spirit-entry { position: static; max-width: none; min-width: 0; }
+.desk-tools #meanings-open { flex-shrink: 0; white-space: nowrap; }
+#meanings-dialog[open] { display: flex; flex-direction: column; width: min(1000px, calc(100vw - 30px)); height: min(820px, 90dvh); overflow: hidden; }
+#meanings-dialog .dialog-heading { flex-shrink: 0; }
+.meaning-filters { display: grid; grid-template-columns: 1fr 150px; gap: 16px; }
+.meaning-filters label { font-size: 12px; }
+.meaning-filters input, .meaning-filters select { display: block; width: 100%; min-width: 0; padding: 9px 10px; margin-top: 4px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--paper); font: inherit; }
+#meaning-count { margin: 8px 0; }
+.meaning-layout { min-height: 0; flex: 1; display: grid; grid-template-columns: 210px minmax(0, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+#meaning-list { overflow-y: auto; padding: 12px 12px 12px 0; border-right: 1px solid var(--line); }
+.meaning-item { display: flex; width: 100%; text-align: left; align-items: center; gap: 10px; padding: 10px 8px; margin-bottom: 6px; border: 1px solid transparent; }
+.meaning-item img { width: 28px; height: 48px; object-fit: contain; }
+.meaning-item small { display: block; font-size: 10px; color: var(--muted); }
+.meaning-item[aria-pressed="true"] { background: #e7e9dc; border-color: #c5cbb8; }
+#meaning-detail { overflow-y: auto; min-width: 0; padding: 22px 10px 24px 24px; }
+.meaning-intro { display: flex; gap: 20px; align-items: center; }
+.meaning-intro > img { width: 85px; height: auto; border-radius: 4px; }
+.meaning-intro h3 { font: 25px var(--serif); margin: 8px 0; }
+.meaning-intro h3 small { display: block; font: 11px/1.8 sans-serif; color: var(--muted); margin-top: 5px; }
+.meaning-intro p { margin: 6px 0; }
+.meaning-direction { border-top: 1px solid var(--line); margin-top: 20px; padding: 16px 0 0; }
+.meaning-direction h4 { margin: 0; font-size: 16px; font-family: var(--serif); }
+.meaning-direction h4 span { font: 10px sans-serif; color: var(--accent); margin-left: 10px; }
+.meaning-direction p { line-height: 1.95; }
+.meaning-keywords { font-size: 12px; color: var(--accent); margin: 8px 0; }
+.meaning-direction.is-current { padding: 14px; border: 1px solid #c5cbb8; background: #eef0e5; border-radius: 4px; }
+.card-meaning { font-size: 11px; padding: 3px; }
+@media (max-width: 600px) {
+  .desk-tools { top: -22px; right: 12px; gap: 12px; max-width: calc(100% - 24px); }
+  .desk-tools button { font-size: 11px; }
+  #meanings-dialog[open] { padding: 18px 16px; height: 92dvh; max-height: 92dvh; }
+  #meanings-dialog h2 { font-size: 21px; }
+  .meaning-filters { grid-template-columns: minmax(0,1fr) 100px; gap: 8px; }
+  .meaning-layout { grid-template-columns: 100px minmax(0, 1fr); }
+  #meaning-list { padding-right: 6px; }
+  .meaning-item { padding: 8px 4px; font-size: 12px; }
+  .meaning-item img, .meaning-item small { display: none; }
+  #meaning-detail { padding: 14px 0 18px 12px; font-size: 12px; }
+  .meaning-intro { align-items: flex-start; gap: 10px; }
+  .meaning-intro > img { width: 44px; }
+  .meaning-intro h3 { font-size: 20px; }
+  .meaning-intro .overline { font-size: 9px; }
+  .meaning-intro p { font-size: 11px; }
+  .meaning-direction h4 { font-size: 15px; }
+  .reading-context .card-meaning { font-size: 9px; padding: 0 2px; }
+}

@@ -6,6 +6,7 @@ import {
 } from "node:crypto";
 import { readFile, mkdir, open, rename, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { PostgresStore } from "./postgres.mjs";
 const digest = (value) => createHash("sha256").update(value).digest("hex");
 const day = (now) => new Date(now + 8 * 3600000).toISOString().slice(0, 10);
 export class AccessError extends Error {
@@ -82,8 +83,15 @@ export function loadDeployment(env = process.env) {
     new Set(codes).size !== codes.length
   )
     throw Error("需要 1 至 100 个互不重复、至少 16 字符的邀请码");
-  if (!env.TAROT_USAGE_FILE)
-    throw Error("请配置持久化额度文件 TAROT_USAGE_FILE");
+  if (env.VERCEL && !env.DATABASE_URL)
+    throw Error("Vercel 部署必须配置 DATABASE_URL");
+  if (env.DATABASE_URL) {
+    let database;
+    try { database = new URL(env.DATABASE_URL); } catch { throw Error("DATABASE_URL 格式无效"); }
+    if (!["postgres:", "postgresql:"].includes(database.protocol))
+      throw Error("DATABASE_URL 必须为 PostgreSQL 连接地址");
+  } else if (!env.TAROT_USAGE_FILE)
+    throw Error("请配置 DATABASE_URL 或持久化额度文件 TAROT_USAGE_FILE");
   return {
     origin: origin.origin,
     config: {
@@ -93,7 +101,8 @@ export function loadDeployment(env = process.env) {
     },
     codes,
     secret: env.TAROT_SESSION_SECRET,
-    usageFile: resolve(env.TAROT_USAGE_FILE),
+    databaseUrl: env.DATABASE_URL || null,
+    usageFile: env.TAROT_USAGE_FILE ? resolve(env.TAROT_USAGE_FILE) : null,
     limits: {
       daily: integer(env.TAROT_INVITE_DAILY_LIMIT, 5),
       total: integer(env.TAROT_INVITE_TOTAL_LIMIT, 20),
@@ -106,7 +115,7 @@ export function loadDeployment(env = process.env) {
     },
   };
 }
-function validateState(state) {
+export function validateState(state) {
   const counter = (c) =>
     c &&
     typeof c.day === "string" &&
@@ -241,7 +250,10 @@ export function createHostedAccess(
   deployment,
   {
     now = Date.now,
-    store = new UsageStore(deployment.usageFile, deployment.limits, now),
+    clientAddress = (req) => req.socket.remoteAddress || "unknown",
+    store = deployment.databaseUrl
+      ? new PostgresStore(deployment.databaseUrl, deployment.limits)
+      : new UsageStore(deployment.usageFile, deployment.limits, now),
   } = {},
 ) {
   const hashes = new Set(deployment.codes.map(digest)),
@@ -283,17 +295,22 @@ export function createHostedAccess(
     deployment,
     ready: store.ready,
     authenticate,
+    health: () => store.check ? store.check() : store.ready,
+    close: () => store.close?.(),
     publicStatus: () => ({ mode: "hosted", model: deployment.config.model }),
     status: async (req) => {
       await store.ready;
       const hash = authenticate(req);
       return hash
-        ? { authenticated: true, quota: store.quota(hash) }
+        ? { authenticated: true, quota: await store.quota(hash) }
         : { authenticated: false };
     },
     async login(req, code) {
-      rate.take("login-global", 60);
-      rate.take("login:" + req.socket.remoteAddress, 10);
+      if (store.login) await store.login(clientAddress(req));
+      else {
+        rate.take("login-global", 60);
+        rate.take("login:" + clientAddress(req), 10);
+      }
       await store.ready;
       if (
         typeof code !== "string" ||
@@ -307,13 +324,14 @@ export function createHostedAccess(
       ).toString("base64url");
       return {
         cookie: cookie(body + "." + sign(body)),
-        status: { authenticated: true, quota: store.quota(hash) },
+        status: { authenticated: true, quota: await store.quota(hash) },
       };
     },
     logout: () => cookie("", 0),
     async begin(req) {
       const hash = authenticate(req);
       if (!hash) throw new AccessError(401, "请先输入有效邀请码");
+      if (store.begin) return store.begin(hash);
       if (active.has(hash))
         throw new AccessError(409, "上一封来信仍在生成，请稍候");
       if (active.size >= deployment.limits.concurrent)
@@ -332,6 +350,7 @@ export function createHostedAccess(
       for (const secret of [
         deployment.config.apiKey,
         deployment.secret,
+        ...(deployment.databaseUrl ? [deployment.databaseUrl] : []),
         ...deployment.codes,
       ])
         text = text.split(secret).join("[已隐藏密钥]");

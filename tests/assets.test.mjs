@@ -51,7 +51,7 @@ test("全部 78 张牌面可通过实际 HTTP 加载，并允许浏览器缓存"
     assert.equal(head.status, 200);
     assert.equal(head.headers.get("cache-control"), "public, max-age=86400");
     assert.equal((await head.arrayBuffer()).byteLength, 0);
-    for (const path of ["/", "/app.js", "/core.js", "/journal.js"]) {
+    for (const path of ["/", "/app.js", "/core.js", "/journal.js", "/meanings.js", "/meaning-sources.js", "/spirit-references.js"]) {
       assert.equal(
         (await fetch(base + path)).headers.get("cache-control"),
         "no-store",

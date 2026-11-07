@@ -13,6 +13,8 @@ import {
   UsageStore,
 } from "../server/hosted.mjs";
 import { readingPayload, quotaText } from "../public/access.js";
+import { createSession, contextMessages } from "../public/core.js";
+import { createSpirit, chooseSpirit, MAJOR_IDS, SPIRITS } from "../public/spirit.js";
 const code = "test-invitation-code-01",
   code2 = "test-invitation-code-02",
   key = "server-only-test-api-key",
@@ -603,7 +605,7 @@ test("部署产物包含持久化磁盘、健康检查、测试构建和秘密�
       ],
       {
         encoding: "utf8",
-        env: { ...process.env, ...envFor(join(dir, "usage.json")) },
+        env: { ...process.env, ...envFor(join(dir, "usage.json")), DATABASE_URL: "", VERCEL: "" },
       },
     );
     assert.match(checked, /检查通过/);
@@ -634,4 +636,31 @@ test("DeepSeek 官方线上接口关闭默认思考，避免短篇叙事额度�
   } finally {
     await f.close();
   }
+});
+
+
+test("线上覆盖客户端系统消息后，仍保留牌灵视角与防止扭曲牌义的规则", async () => {
+  const spirit = chooseSpirit(createSpirit(MAJOR_IDS), 15);
+  const conversation = contextMessages(createSession("如何看待目前的关系？", "single", "", spirit));
+  let calls = 0;
+  const f = await fixture({}, async (_url, options) => {
+    calls++;
+    const input = JSON.parse(options.body);
+    assert.equal(input.messages.filter(m => m.role === "system").length, 1);
+    assert.match(input.messages[0].content, /按其中的观察重点、表达风格和追问方式/);
+    assert.match(input.messages[0].content, /不得为了人设强行扭曲结论/);
+    const payload = JSON.parse(input.messages[1].content);
+    assert.equal(payload.牌灵档案.牌灵, "恶魔");
+    assert.equal(payload.牌灵档案.focus, SPIRITS.m15.focus);
+    assert.equal(payload.牌灵档案.性格依据.牌灵参考.来源.url, "https://017cafe.com/main_card/");
+    assert.match(payload.牌灵档案.性格依据.说明, /并非原作者原话/);
+    assert.match(input.messages[0].content, /不得把牌义资料冒称/);
+    return Response.json({ choices: [{ message: { content: "测试解读" } }] });
+  });
+  try {
+    const cookie = await f.login();
+    const response = await f.request("/api/reading", "POST", { messages: conversation }, cookie);
+    assert.equal(response.status, 200);
+    assert.equal(calls, 1);
+  } finally { await f.close(); }
 });
