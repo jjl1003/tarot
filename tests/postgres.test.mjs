@@ -245,3 +245,42 @@ test("Vercel 实际入口保留路由和来源检查，登录限流使用平台�
     assert.equal((await invoke(handler, "/api/access", { method: "POST", body: { code }, headers: { "x-vercel-forwarded-for": "192.0.2.2" } })).status, 200);
   } finally { await f.close(); }
 });
+
+test("数据库首次失败后无需重启即可恢复，健康检查只返回安全诊断代码", async () => {
+  const f = await database();
+  try {
+    await f.db.query("DROP TABLE tarot_runtime");
+    const store = f.store();
+    const hosted = createHostedAccess(loadDeployment(env), { store });
+    const handler = createHandler({ hosted });
+    const failed = await invoke(handler, "/healthz");
+    assert.equal(failed.status, 503);
+    assert.deepEqual(failed.json, { status: "unavailable", code: "database_table_missing" });
+    await f.db.exec(migration);
+    assert.deepEqual((await invoke(handler, "/healthz")).json, { status: "ok" });
+    const login = await invoke(handler, "/api/access", { method: "POST", body: { code } });
+    assert.equal(login.status, 200);
+    await f.db.query("UPDATE tarot_runtime SET state = '{}'::jsonb WHERE id = 1");
+    assert.equal((await invoke(handler, "/healthz")).json.code, "database_state_invalid");
+  } finally { await f.close(); }
+});
+
+test("健康诊断识别认证、地址和 TLS 错误，未知错误不暴露原文", async () => {
+  const { healthFailureCode } = await import("../server/diagnostics.mjs");
+  for (const [code, expected] of [
+    ["28P01", "database_authentication_failed"],
+    ["ENOTFOUND", "database_host_unreachable"],
+    ["CERT_HAS_EXPIRED", "database_tls_failed"],
+    ["42501", "database_permission_denied"],
+    ["TAROT_STATE_MISSING", "database_state_missing"],
+    [env.DATABASE_URL, "storage_unavailable"],
+    ["constructor", "storage_unavailable"],
+  ]) {
+    const error = Object.assign(Error(env.DATABASE_URL), { code });
+    assert.equal(healthFailureCode(error), expected);
+    const handler = createHandler({ hosted: { ready: Promise.reject(error) } });
+    const response = await invoke(handler, "/healthz");
+    assert.equal(response.status, 503);
+    assert.ok(!JSON.stringify(response.json).includes("postgresql://"));
+  }
+});

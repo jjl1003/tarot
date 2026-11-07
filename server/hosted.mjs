@@ -293,7 +293,7 @@ export function createHostedAccess(
   }
   return {
     deployment,
-    ready: store.ready,
+    get ready() { return store.ready; },
     authenticate,
     health: () => store.check ? store.check() : store.ready,
     close: () => store.close?.(),

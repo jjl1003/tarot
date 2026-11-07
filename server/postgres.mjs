@@ -30,13 +30,22 @@ export class PostgresStore {
     });
     // No driver errors or connection strings should enter application logs.
     this.pool.on?.("error", () => {});
-    this.ready = this.check();
-    this.ready.catch(() => {});
+    this.readiness = null;
+  }
+  get ready() {
+    // Share an in-flight check, but never cache a rejected initialization forever.
+    this.readiness ||= this.check().catch(error => {
+      this.readiness = null;
+      throw error;
+    });
+    return this.readiness;
   }
   async check() {
     const result = await this.pool.query("SELECT state FROM tarot_runtime WHERE id = 1");
-    if (result.rows.length !== 1) throw Error("请先初始化数据库");
-    validate(result.rows[0].state);
+    if (result.rows.length !== 1)
+      throw Object.assign(Error("请先初始化数据库"), { code: "TAROT_STATE_MISSING" });
+    try { validate(result.rows[0].state); }
+    catch { throw Object.assign(Error("数据库额度记录损坏"), { code: "TAROT_STATE_INVALID" }); }
   }
   quotaFor(state, hash, now) {
     return UsageStore.prototype.quota.call({ state, limits: this.limits, now: () => now }, hash);

@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { resolve, extname } from "node:path";
 import { validateConfig, contextMessages } from "./public/core.js";
+import { healthFailureCode } from "./server/diagnostics.mjs";
 import {
   AccessError,
   loadDeployment,
@@ -74,8 +75,8 @@ export function createHandler({
         await hosted?.ready;
         await hosted?.health?.();
         return send(200, { status: "ok" });
-      } catch {
-        return send(503, { status: "unavailable" });
+      } catch (error) {
+        return send(503, { status: "unavailable", code: healthFailureCode(error) });
       }
     }
     const expected = hosted?.deployment.origin || `http://${req.headers.host}`;

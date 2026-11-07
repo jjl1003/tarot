@@ -81,7 +81,9 @@ Vercel 不使用 `TAROT_USAGE_FILE`。缺少 `DATABASE_URL` 时服务拒绝启�
 
 登录按平台提供的地址执行每分钟 10 次、全站每分钟 60 次限制；同一出口网络的访客共享地址限制。Vercel 入口只信任平台覆盖的 `x-vercel-forwarded-for`，不使用访客自填的代理地址。[平台请求头说明](https://vercel.com/docs/headers/request-headers)
 
-数据库缺失、损坏、连接或写入失败时停止调用模型，返回通用错误，不输出底层连接信息。服务不会自动重建被删除的额度记录。数据库故障恢复后可重新部署以清除初始化失败状态。
+数据库缺失、损坏、连接或写入失败时停止调用模型，不输出底层连接信息。服务不会自动重建被删除的额度记录。初始化检查失败后会在后续请求中重试，数据库恢复后无需重新部署；修改 Vercel 环境变量仍需重新部署。
+
+`/healthz` 失败时返回安全的 `code`，不包含密码、连接串、主机名或底层错误原文：`database_authentication_failed` 表示核对数据库用户和密码；`database_table_missing` / `database_state_missing` 表示在连接串对应的分支与数据库中执行初始化脚本；`database_host_unreachable` 表示核对连接串主机地址；`database_tls_failed` 表示检查 TLS 连接配置；`database_permission_denied` 表示数据库用户权限不足；`storage_unavailable` 表示其他存储故障，不能仅凭它认定密码或初始化有误。
 
 ## 5. 上线检查
 
