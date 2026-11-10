@@ -1,0 +1,10 @@
+MediaPipe Tasks Vision 0.10.32
+Copyright Google LLC. Licensed under the Apache License, Version 2.0.
+Source package: https://www.npmjs.com/package/@mediapipe/tasks-vision/v/0.10.32
+Upstream: https://github.com/google-ai-edge/mediapipe
+
+vision-0.10.32.js is the unmodified vision_bundle.cjs from the npm package.
+vision-wasm.js and vision-wasm-nosimd.js are unmodified WASM loader scripts.
+WASM binaries and Hand Landmarker model weights are downloaded on opt-in from
+jsDelivr and Google's official MediaPipe model storage. Camera images are
+processed in a local browser worker; this application does not upload them.

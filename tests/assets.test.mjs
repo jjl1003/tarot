@@ -51,9 +51,18 @@ test("全部 78 张牌面可通过实际 HTTP 加载，并允许浏览器缓存"
     assert.equal(head.status, 200);
     assert.equal(head.headers.get("cache-control"), "public, max-age=86400");
     assert.equal((await head.arrayBuffer()).byteLength, 0);
-    for (const path of ["/", "/app.js", "/core.js", "/journal.js", "/meanings.js", "/meaning-sources.js", "/spirit-references.js"]) {
+    for (const path of ["/", "/style.css", "/app.js", "/core.js", "/journal.js", "/meanings.js", "/meaning-sources.js", "/spirit-references.js", "/ritual.js", "/ritual-ui.js", "/hand-camera.js", "/hand-gestures.js", "/hand-ui.js", "/hand-worker.js", "/hand-palms.js", "/hand-feedback.js", "/vendor/vision-0.10.32.js", "/vendor/vision-wasm.js", "/vendor/vision-wasm-nosimd.js"]) {
+      const response = await fetch(base + path);
+      assert.equal(response.status, 200);
+      if (path.endsWith(".js")) assert.match(response.headers.get("content-type"), /javascript/);
+      if (path.endsWith(".css")) assert.match(response.headers.get("content-type"), /text\/css/);
+      if (/\.(js|css)$/.test(path)) assert.deepEqual(
+        Buffer.from(await response.arrayBuffer()),
+        readFileSync(new URL("../public" + path, import.meta.url)),
+        `${path} 应发布完整原文件，不能被首页或旧资源替代`,
+      );
       assert.equal(
-        (await fetch(base + path)).headers.get("cache-control"),
+        response.headers.get("cache-control"),
         "no-store",
       );
     }

@@ -1,6 +1,7 @@
 import { CARDS, CARD_MAP } from "./cards.js";
 import { meaningContext } from "./meanings.js";
 import { validSpirit, spiritContext } from "./spirit.js";
+import { mixDeck } from "./ritual.js";
 export const SPREADS = {
   single: { name: "单张牌", positions: ["单张指引"] },
   insight: { name: "现状／阻碍／建议", positions: ["现状", "阻碍", "建议"] },
@@ -45,7 +46,25 @@ export function createSession(question, spread, model = "", spirit = null) {
 export function transition(s, action, value, rng = random) {
   const n = structuredClone(s);
   const need = SPREADS[n.spread].positions.length;
-  if (action === "shuffle" && n.phase === "meditate") {
+  if (action === "mix" && ["meditate", "mixing"].includes(n.phase) && [1, -1].includes(value)) {
+    if (n.phase === "meditate") n.deck = shuffle(undefined, rng);
+    n.deck = mixDeck(n.deck, value, rng);
+    n.mixCount = (n.mixCount || 0) + 1;
+    n.phase = "mixing";
+  } else if (action === "shuffle" && n.phase === "mixing") {
+    n.phase = "cut";
+  } else if (action === "preview-cut" && n.phase === "cut" &&
+    (value === null || (Number.isInteger(value) && value > 0 && value < n.deck.length))) {
+    n.cutPreview = value;
+  } else if (action === "repeat-cut" && n.phase === "cut" &&
+    Number.isInteger(value) && value > 0 && value < n.deck.length) {
+    n.deck = [...n.deck.slice(value), ...n.deck.slice(0, value)];
+    n.cut = value;
+    n.cutCount = (n.cutCount || 0) + 1;
+    n.cutPreview = null;
+  } else if (action === "finish-cut" && n.phase === "cut" && n.cutCount > 0) {
+    n.phase = "select";
+  } else if (action === "shuffle" && n.phase === "meditate") {
     n.deck = shuffle(undefined, rng);
     n.phase = "cut";
   } else if (
@@ -163,6 +182,7 @@ export function loadSessions(storage) {
     if (data?.version !== 1 || !Array.isArray(data.sessions)) return empty;
     const phases = [
       "meditate",
+      "mixing",
       "cut",
       "select",
       "reveal",
@@ -194,7 +214,11 @@ export function loadSessions(storage) {
             typeof c.revealed === "boolean" &&
             typeof c.position === "string",
         ) ||
-        !s.deck.every((id) => CARD_MAP[id])
+        !s.deck.every((id) => CARD_MAP[id]) ||
+        (s.cutCount !== undefined && (!Number.isSafeInteger(s.cutCount) || s.cutCount < 1)) ||
+        (s.mixCount !== undefined && (!Number.isSafeInteger(s.mixCount) || s.mixCount < 1)) ||
+        (s.phase === "mixing" && (!s.mixCount || s.cards.length)) ||
+        (s.cutPreview != null && (!Number.isInteger(s.cutPreview) || s.cutPreview < 1 || s.cutPreview > 77))
       )
         return false;
       if (

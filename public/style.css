@@ -1686,3 +1686,106 @@ dialog::backdrop {
   .meaning-direction h4 { font-size: 15px; }
   .reading-context .card-meaning { font-size: 9px; padding: 0 2px; }
 }
+
+/* The deck is handled on the page, rather than represented by a loading animation. */
+.hand-ritual { display:flex; flex-direction:column; align-items:stretch; gap:10px; min-height:0; }
+.ritual-table { position:relative; width:100%; height:clamp(210px,31vh,330px); min-height:210px; border:1px solid #b4ad9038; border-radius:50% / 42%; background:radial-gradient(ellipse at center,#dddcc449,#efeadb0a 68%); outline-offset:5px; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; overflow:hidden; isolation:isolate; }
+.ritual-table.is-handling { cursor:grabbing; }
+.ritual-orbit { position:absolute; width:73%; height:76%; border:1px dashed #b6ad8659; border-radius:50%; top:10%; left:13.5%; display:flex; align-items:center; justify-content:space-between; padding:0 11px; color:#9c987c; font-size:24px; pointer-events:none; }
+.ritual-pile { position:absolute; left:50%; top:46%; width:0; height:0; pointer-events:none; }
+.ritual-card,.packet,.cut-face { background:repeating-linear-gradient(45deg,#7b856d 0 2px,#838d7420 2px 4px),#7b856d; border:5px double #e8dfc2; border-radius:5px; color:#f4e7bf; }
+.ritual-card { position:absolute; width:76px; height:125px; margin-left:-38px; margin-top:-62px; box-shadow:1px 1px 0 #e6dec9,2px 3px 3px #554f382b; transition:transform .65s cubic-bezier(.2,.75,.2,1); will-change:transform; }
+.is-handling .ritual-card { transition:transform .09s linear; }
+.ritual-back-design { position:absolute; inset:6px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; border:1px solid #e6dcb77a; border-radius:45% 45% 4px 4px; pointer-events:none; }
+.ritual-back-design::before,.ritual-back-design::after { content:'·  ✧  ·'; font-size:9px; font-weight:400; letter-spacing:3px; color:#eadfb99c; }
+.ritual-back-design i { font-style:normal; font-size:28px; line-height:1; }
+.ritual-back-design b { font-weight:400; font-size:15px; line-height:1; }
+.ritual-table-label { position:absolute; bottom:12px; width:100%; text-align:center; color:#9e987d; font-size:8px; letter-spacing:2.4px; pointer-events:none; }
+.ritual-hint { text-align:center; font-size:12px; line-height:1.7; margin:1px 0; color:#817e67; }
+.ritual-keyboard { display:block; font-size:10px; color:#a19b87; }
+.ritual-status { min-height:18px; text-align:center; font-size:11px; letter-spacing:1px; color:#8a886c; margin:0; }
+.hand-ritual .primary { margin-top:5px; }
+.hand-ritual .text-button { align-self:center; }
+.cut-table { display:grid; place-items:center; min-height:245px; padding:15px 0 24px; }
+.cut-pile { --cut-position:50%; position:relative; width:126px; height:183px; cursor:crosshair; outline-offset:18px; touch-action:pan-x; transform:rotate(-6deg); }
+.cut-face { position:absolute; inset:0; box-shadow:6px 9px 20px #6861491a; }
+.cut-edges { position:absolute; inset:0; }
+.cut-edges i { position:absolute; inset:0; border:1px solid #c1b99d; border-radius:5px; background:#e9e0c9; transform:translate(calc(var(--edge) * .19px),calc(var(--edge) * .34px)); }
+.cut-guide { position:absolute; top:var(--cut-position); left:-18px; right:-30px; height:1px; background:#d0b877; box-shadow:0 0 8px #d2b36b99; pointer-events:none; transition:top .09s; z-index:2; }
+.cut-guide::before { content:'✦'; position:absolute; left:-10px; top:-9px; color:#a99154; font-size:15px; }
+.cut-packets { display:flex; align-items:center; justify-content:center; gap:25px; min-height:250px; padding:18px 0 34px; }
+.packet { position:relative; width:94px; height:153px; box-shadow:3px 3px #e1d8c1,6px 6px #aaa98c,9px 9px #e9dfc9,10px 16px 24px #514f3220; }
+.packet span:not(.ritual-back-design) { position:absolute; bottom:-36px; left:-12px; right:-12px; text-align:center; color:#89846c; font-size:11px; letter-spacing:1px; }
+.packet-upper { animation:packet-upper .6s cubic-bezier(.2,.75,.2,1) both; }
+.packet-lower { animation:packet-lower .6s cubic-bezier(.2,.75,.2,1) both; }
+.packet-arrow { font-size:29px; font-weight:300; color:#a89d76; }
+.ritual-flight { box-shadow:0 12px 30px #4c4d363d; transform-origin:top left; border-radius:5px; }
+.fan button { transition:translate .3s cubic-bezier(.2,.75,.2,1),box-shadow .3s,background .3s; }
+.fan button:hover:enabled,.fan button:focus-visible { translate:0 -15px; box-shadow:0 14px 22px #4d4d352a; z-index:90; }
+@keyframes packet-upper { from { transform:translate(60px,0) rotate(-6deg); opacity:.5; } to { transform:translate(-4px,-14px) rotate(-10deg); opacity:1; } }
+@keyframes packet-lower { from { transform:translate(-60px,0) rotate(-6deg); opacity:.5; } to { transform:translate(3px,12px) rotate(6deg); opacity:1; } }
+@media(max-width:600px) {
+  .ritual-table { height:clamp(205px,29vh,270px); min-height:205px; }
+  .ritual-card { width:68px; height:112px; margin-left:-34px; margin-top:-56px; }
+  .hand-ritual { gap:7px; }
+  .cut-table,.cut-packets { min-height:220px; }
+  .cut-packets { gap:19px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .ritual-card,.is-handling .ritual-card,.fan button,.cut-guide { transition:none; }
+  .packet-upper,.packet-lower { animation:none; }
+}
+.hand-controls { position:relative; padding:0 0 8px; flex:none; }
+.hand-control-line { display:flex; flex-wrap:wrap; gap:3px 10px; align-items:center; }
+.hand-control-line .text-button { font-size:11px; white-space:nowrap; margin:0; padding:4px 0; }
+#hand-state { flex:1; font-size:10px; color:#8d876e; line-height:1.5; min-width:130px; }
+.hand-help { font-size:10px; color:#969077; }
+.hand-help summary { cursor:pointer; padding:2px 0; }
+.hand-help p { font-size:11px; line-height:1.6; margin:6px 0; }
+.hand-video { position:absolute; right:0; top:45px; z-index:101; width:100px; height:75px; background:#dad5c2; border:2px solid #d8cfb6; border-radius:8px; overflow:hidden; pointer-events:none; box-shadow:0 4px 14px #4f4c3022; }
+.hand-video video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+.hand-video::after { content:'本机识别'; position:absolute; bottom:2px; left:4px; color:#fff; font-size:8px; text-shadow:0 1px 3px #000; }
+.hand-cursor { position:fixed; width:24px; height:24px; margin:-12px 0 0 -12px; border:2px solid #b99c58; border-radius:50%; background:#d8c58a33; box-shadow:0 0 0 5px #c8ad5820; pointer-events:none; z-index:1100; transition:width .12s,height .12s,background .12s; }
+.hand-cursor.is-pinching { background:#c6ad68cc; box-shadow:0 0 0 8px #c8ad5830; }
+.hand-hover { outline:2px solid #b99c58 !important; outline-offset:5px; }
+.card.back { background:repeating-linear-gradient(45deg,#7c846c 0 2px,#899078 2px 4px); border:5px double #eee4c8; color:#f2e7ca; }
+/* A persistent monitor explains what the hands are doing, beside the deck. */
+.hand-enabled .ritual-leaf { position:relative; }
+.hand-enabled .hand-controls { padding-right:176px; min-height:110px; }
+.hand-enabled .cut-table { min-height:200px; padding:8px 0 20px; }
+.hand-enabled .cut-pile { width:108px; height:155px; }
+.hand-enabled .ritual-leaf > .hand-panel { position:absolute; top:62px; right:24px; width:150px; z-index:105; margin:0; padding:8px; box-shadow:0 5px 18px #4f4c3018; pointer-events:none; }
+.hand-panel button { pointer-events:auto; }
+.hand-panel { border:1px solid #b7b49b66; border-radius:9px; background:#efeddfc9; padding:12px; margin:8px 0; }
+.hand-panel > header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:9px; }
+.hand-panel > header strong { font-size:12px; font-weight:500; color:#666d52; letter-spacing:1px; }
+.hand-panel .text-button { font-size:10px; margin:0; padding:1px 0; }
+.hand-monitor-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:4px; align-items:center; }
+.hand-video { position:relative; inset:auto; z-index:auto; width:100%; height:auto; aspect-ratio:var(--video-aspect,4/3); background:#272c25; border:0; border-radius:6px; box-shadow:none; }
+.hand-video video,.hand-skeleton { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+.hand-skeleton { pointer-events:none; }
+.hand-video::after { content:none; }
+.hand-camera-badge { position:absolute; left:6px; bottom:4px; color:#f8fff7; font-size:8px; text-shadow:0 1px 3px #000; }
+.hand-presence { display:flex; flex-wrap:wrap; gap:3px 8px; color:#6d785e; font-size:9px; }
+.hand-tracking { font-size:10px; line-height:1.5; min-height:0; margin:3px 0; color:#6d7158; }
+.hand-panel .hand-presence,.hand-panel .hand-action,.hand-panel .hand-meter-title { display:none; }
+.hand-meter-title { display:flex; justify-content:space-between; gap:6px; align-items:center; font-size:10px; color:#8c876e; }
+.hand-percentage { color:#6d785a; font-size:15px; font-weight:500; font-variant-numeric:tabular-nums; }
+.hand-opening-meter { height:6px; background:#d7d8c9; overflow:hidden; border-radius:5px; margin:7px 0; }
+.hand-opening-meter i { display:block; width:var(--hand-value,0%); height:100%; background:#899a70; transition:width .10s linear; border-radius:inherit; }
+.hand-calibration { display:block; width:100%; height:6px; accent-color:#baaa77; margin:5px 0; }
+.hand-action { min-height:3em; font-size:10px; line-height:1.5; color:#8d8465; margin:7px 0 0; }
+@media(max-width:600px) {
+  .hand-enabled .hand-controls { padding-right:128px; min-height:120px; }
+  .hand-enabled .ritual-leaf > .hand-panel { top:12px; right:14px; width:112px; padding:5px; }
+  .hand-panel > header strong { font-size:10px; }
+  .hand-panel #hand-recalibrate { font-size:9px; }
+  .hand-panel { padding:8px; margin:5px 0; }
+  .hand-panel > header { margin-bottom:4px; }
+  .hand-monitor-grid { grid-template-columns:minmax(0,1fr); gap:3px; }
+  .hand-panel .hand-tracking { min-height:0; margin:3px 0; font-size:10px; }
+  .hand-action { min-height:0; font-size:9px; margin:3px 0 0; }
+}
+@media(prefers-reduced-motion:reduce) { .hand-opening-meter i { transition:none; } }
+.hand-presence span:first-child { color:#5c8969; }
+.hand-presence span:nth-child(2) { color:#5485a0; }

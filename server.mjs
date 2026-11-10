@@ -66,7 +66,8 @@ export function createHandler({
         "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "no-referrer",
         "Content-Security-Policy":
-          "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'",
+          "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; img-src 'self' data:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.32/wasm/ https://storage.googleapis.com/mediapipe-models/hand_landmarker/; frame-ancestors 'none'; base-uri 'none'",
+        "Permissions-Policy": "camera=(self), microphone=()",
       });
       res.end(type === "application/json" ? JSON.stringify(body) : body);
     };

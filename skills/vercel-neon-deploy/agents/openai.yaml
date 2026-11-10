@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vercel + Neon 网页部署向导"
+  short_description: "识别本地或 GitHub 网页项目，按免费方案提供部署链接、字段填写与上线验收指导"
+  default_prompt: "请使用 $vercel-neon-deploy 帮我部署这个网页工具，先检查项目，再逐步给我网页链接和需要填写的配置字段。"

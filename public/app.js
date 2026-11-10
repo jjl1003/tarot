@@ -18,6 +18,15 @@ import { readingPayload, quotaText } from "./access.js";
 import { PAGES, defaultPage, availablePages, readingPages } from "./journal.js";
 import { SPIRITS, MAJOR_IDS, createSpirit, chooseSpirit, renameSpirit, saveSpirit, loadSpirit, spiritContext } from "./spirit.js";
 import { MEANINGS, findMeaningCards, cardGroup, MEANING_GROUPS } from "./meanings.js";
+import { ritualMarkup, mountRitual } from "./ritual-ui.js";
+import { createHandMode } from "./hand-ui.js";
+let disposeRitual = () => {};
+let ritualPicking = false;
+const handMode = createHandMode({
+  onMix: direction => disposeRitual.mix?.(direction, direction > 0 ? "手掌顺时针" : "手掌逆时针"),
+  onPose: pose => disposeRitual.handPose?.(pose),
+  onCut: point => act("repeat-cut", point),
+});
 let meaningChoice = "m0";
 let meaningDrawn = null;
 let spirit = loadSpirit(localStorage);
@@ -409,19 +418,64 @@ function act(action, value) {
     notify(e.message);
   }
 }
+async function pickWithMotion(button) {
+  if (busy || ritualPicking) return;
+  const start = button.getBoundingClientRect();
+  const scroll = button.closest(".fan-scroll");
+  const scrollLeft = scroll.scrollLeft;
+  const previous = new Map([...scroll.querySelectorAll("[data-pick]")].map(node => [node.dataset.pick, node.getBoundingClientRect()]));
+  const ghost = button.cloneNode(true);
+  ghost.removeAttribute("data-pick");
+  ghost.setAttribute("aria-hidden", "true");
+  ghost.tabIndex = -1;
+  const id = button.dataset.pick;
+  ritualPicking = true;
+  try {
+    act("select", id);
+    const nextScroll = $("page-draw").querySelector(".fan-scroll");
+    if (nextScroll) nextScroll.scrollLeft = scrollLeft;
+    const target = [...$("page-draw").querySelectorAll(".spread .card")].at(-1);
+    if (!target || matchMedia("(prefers-reduced-motion: reduce)").matches || !ghost.animate) return;
+    const end = target.getBoundingClientRect();
+    ghost.className = "back ritual-flight";
+    ghost.style.cssText = `position:fixed;left:${start.left}px;top:${start.top}px;width:${start.width}px;height:${start.height}px;z-index:1000;pointer-events:none;margin:0;transform:none;`;
+    document.body.append(ghost);
+    target.style.visibility = "hidden";
+    if (nextScroll) nextScroll.querySelectorAll("[data-pick]").forEach(node => {
+      const before = previous.get(node.dataset.pick), after = node.getBoundingClientRect();
+      if (before && after.right > 0 && after.left < innerWidth) node.animate([
+        { translate: `${before.left - after.left}px ${before.top - after.top}px` },
+        { translate: "0 0" },
+      ], { duration: 380, easing: "cubic-bezier(.2,.7,.2,1)" });
+    });
+    try {
+      await ghost.animate([
+        { transform: "translate(0,0) scale(1) rotate(-4deg)", opacity: 1 },
+        { transform: `translate(${(end.left - start.left) * .55}px,${Math.min(end.top - start.top, 0) - 42}px) scale(1.12) rotate(5deg)`, offset: .48 },
+        { transform: `translate(${end.left - start.left}px,${end.top - start.top}px) scale(${end.width / start.width},${end.height / start.height}) rotate(0deg)`, opacity: 1 },
+      ], { duration: 560, easing: "cubic-bezier(.22,.75,.15,1)", fill: "forwards" }).finished;
+    } finally { target.style.visibility = ""; ghost.remove(); }
+    target.animate([{ transform: "translateY(-5px)" }, { transform: "translateY(0)" }], { duration: 180, easing: "ease-out" });
+    if (active()?.phase === "reveal") $("page-draw").querySelector('[data-flip="0"]')?.focus({ preventScroll: true });
+  } finally { ghost.remove(); ritualPicking = false; }
+}
 function renderDraw(s) {
+  disposeRitual();
+  disposeRitual = () => {};
   if (!s) {
+    handMode.mount($("page-draw"), false);
     $("page-draw").innerHTML = "";
     return;
   }
   const copy = {
     meditate: [
-      "先让心安静下来",
-      "在心里慢慢重复你的问题。准备好了，再开始洗牌。",
+      "让牌，随你的手流动",
+      "在心里慢慢重复你的问题。按住牌堆绕动，顺时针或逆时针都可以，由你决定何时停下。",
     ],
+    mixing: ["让牌，随你的手流动", "慢慢绕动，让整副牌在手下散开、交错。松手时牌会重新收拢；准备好了，再亲手切牌。"],
     cut: [
       "在这里，让牌堆转个弯",
-      "拖动刻度，选择你想切开的位置。它会真正改变牌堆的顺序。",
+      "沿牌堆移动鼠标，在直觉停留的位置点下。看它分成两叠，再将下叠合到上面。",
     ],
     select: [
       "让直觉，替你停留",
@@ -448,13 +502,7 @@ function renderDraw(s) {
       "这张牌由你亲手选定。轻轻翻开，让它加入原来的故事。",
     ],
   }[s.phase];
-  let body = "";
-  if (s.phase === "meditate")
-    body =
-      '<div class="deck-scene"><div class="deck-stack">☽</div><span class="deck-caption">78 张牌 · 此刻的可能</span></div><button id="shuffle" class="primary">默念好了，开始洗牌 <span>↗</span></button>';
-  if (s.phase === "cut")
-    body =
-      '<div class="deck-scene"><div class="deck-stack shuffling">✧</div></div><label for="cut-point" class="cut-label">切牌位置 <output id="cut-value">39 / 78</output></label><input id="cut-point" class="cut-input" type="range" min="1" max="77" value="39"><button id="cut" class="primary">在这里切牌 <span>↗</span></button>';
+  let body = ritualMarkup(s);
   const selecting = ["select", "supplement-select"].includes(s.phase);
   if (selecting)
     body += `<section id="draw-ritual" tabindex="-1" aria-label="${s.phase === "supplement-select" ? "手动补抽一张" : "手动选牌"}"><h3>${s.phase === "supplement-select" ? "由你，再抽一张" : "请选择你的牌"}</h3>${fan(s)}<div class="selection-note"><span>← 横向滑动，点击牌背 →</span><span>${s.phase === "supplement-select" ? "补充指引 · 选 1 张" : `已选 ${s.cards.length} / ${SPREADS[s.spread].positions.length}`}</span></div></section>`;
@@ -468,15 +516,27 @@ function renderDraw(s) {
       '<button id="return-reading" class="primary">回到牌间来信 <span>→</span></button>';
   $("page-draw").innerHTML =
     sessionNote(s, "CHAPTER TWO", copy[0], copy[1]) +
-    `<div class="leaf ritual-leaf ${selecting ? "has-fan" : ""}">${kicker("THE DRAWING RITUAL", "02 / 抽牌")}<div class="ritual-content">${body}</div>${bottom("凭直觉选牌，由你亲手翻开。", "02")}</div>`;
+    `<div class="leaf ritual-leaf ${selecting ? "has-fan" : ""}">${kicker("THE DRAWING RITUAL", "02 / 抽牌")}<section class="hand-controls" aria-label="可选摄像头手势"></section><div class="ritual-content">${body}</div>${bottom("凭直觉选牌，由你亲手翻开。", "02")}</div>`;
   bind("shuffle", () => act("shuffle"));
-  bind("cut", () => act("cut", Number($("cut-point").value)));
-  if ($("cut-point"))
-    $("cut-point").oninput = () =>
-      ($("cut-value").textContent = $("cut-point").value + " / 78");
+  bind("cut", () => act("cut", s.cutPreview));
+  bind("finish-cut", () => act("finish-cut"));
+  bind("recut", () => { act("preview-cut", null); $("cut-pile")?.focus({ preventScroll: true }); });
+  disposeRitual = mountRitual($("page-draw"), {
+    current: active,
+    onMix: direction => {
+      if (busy || active()?.id !== s.id) return;
+      try {
+        const next = transition(active(), "mix", direction);
+        sessions = sessions.map(old => old.id === next.id ? next : old);
+        persist();
+      } catch (error) { notify(error.message); }
+    },
+    onCut: point => { act("preview-cut", point); $("cut")?.focus({ preventScroll: true }); },
+  });
+  handMode.mount($("page-draw"), view === "draw" && !busy && ["meditate", "mixing", "cut", "select", "reveal", "supplement-select", "supplement-reveal"].includes(s.phase));
   $("page-draw")
     .querySelectorAll("[data-pick]")
-    .forEach((b) => (b.onclick = () => act("select", b.dataset.pick)));
+    .forEach((b) => (b.onclick = () => pickWithMotion(b)));
   $("page-draw")
     .querySelectorAll("[data-flip]")
     .forEach((b) => (b.onclick = () => act("reveal", Number(b.dataset.flip))));
